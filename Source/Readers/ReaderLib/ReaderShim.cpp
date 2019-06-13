@@ -5,6 +5,7 @@
 // ReaderShim.cpp: implementation for shim wrapping the new reader interface
 //
 
+#include "Globals.h"
 #define _CRT_SECURE_NO_WARNINGS
 
 #ifdef _WIN32
@@ -68,6 +69,12 @@ ReaderShim<ElemType>::ReaderShim(ReaderPtr reader) :
 template <class ElemType>
 void ReaderShim<ElemType>::Init(const ConfigParameters& config)
 {
+    size_t rank = config("rank");
+    size_t processNum = config("processNum");
+    Globals::SetRank(rank);
+    Globals::SetProcessNum(processNum);
+    Globals::PrintMpiInfo();
+
     intargvector numberOfuttsPerMinibatchForAllEpochs =
         config(L"nbruttsineachrecurrentiter", ConfigParameters::Array(intargvector(vector<int> { 1 })));
 

@@ -54,18 +54,23 @@ public:
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override
     {
-        FrameRange fr(InputRef(0).GetMBLayout());
-        InputRef(0).ValueFor(fr).VectorMax(*m_maxIndexes0, *m_maxValues, true);
-        InputRef(1).ValueFor(fr).VectorMax(*m_maxIndexes1, *m_maxValues, true, m_topK);
-        MaskMissingColumnsToZero(*m_maxIndexes0, InputRef(0).GetMBLayout(), fr);
-        MaskMissingColumnsToZero(*m_maxIndexes1, InputRef(1).GetMBLayout(), fr);
-        Value().AssignNumOfDiff(*m_maxIndexes0, *m_maxIndexes1, m_topK > 1);
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
+        {
+            FrameRange fr(InputRef(0).GetMBLayout());
+            InputRef(0).ValueFor(fr).VectorMax(*m_maxIndexes0, *m_maxValues, true);
+            InputRef(1).ValueFor(fr).VectorMax(*m_maxIndexes1, *m_maxValues, true, m_topK);
+            MaskMissingColumnsToZero(*m_maxIndexes0, InputRef(0).GetMBLayout(), fr);
+            MaskMissingColumnsToZero(*m_maxIndexes1, InputRef(1).GetMBLayout(), fr);
+            Value().AssignNumOfDiff(*m_maxIndexes0, *m_maxIndexes1, m_topK > 1);
 #if NANCHECK
-        Value().HasNan("ClassificationError");
+            Value().HasNan("ClassificationError");
 #endif
 #if DUMPOUTPUT
-        Value().Print("ClassificationErrorNode");
+            Value().Print("ClassificationErrorNode");
 #endif
+        }
     }
 
     virtual void /*ComputationNodeBase::*/ Validate(bool isFinalValidationPass) override
@@ -85,6 +90,8 @@ public:
     virtual void UpdateFunctionMBSize() override
     {
         Base::UpdateFunctionMBSize();
+        if (!Environment().IsTraining())
+            return;
 
         // resize the temporaries to their proper size
         size_t cols = Input(0)->Value().GetNumCols();
