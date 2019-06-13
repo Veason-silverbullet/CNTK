@@ -28,7 +28,7 @@ public:
         m_globalMinibatchSizeInSamples(0),
         m_localMinibatchSizeInSamples(0)
     {
-        m_pathFile = ofstream(Globals::GetStdoutPath() + "path_" + to_string(Globals::GetRank()) + "_" + to_string(Globals::GetProcessNum()) + ".txt", ios::out);
+        m_pathFile = ofstream(Globals::GetStdoutPath() + "/path_" + to_string(Globals::GetRank()) + "_" + to_string(Globals::GetProcessNum()) + ".txt", ios::out);
     }
 
     ~SequencePacker()
