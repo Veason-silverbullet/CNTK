@@ -71,8 +71,10 @@ void ReaderShim<ElemType>::Init(const ConfigParameters& config)
 {
     size_t rank = config("rank");
     size_t processNum = config("processNum");
+    string stdoutPath = config("stdoutPath");
     Globals::SetRank(rank);
     Globals::SetProcessNum(processNum);
+    Globals::SetStdoutPath(stdoutPath);
     Globals::PrintMpiInfo();
 
     intargvector numberOfuttsPerMinibatchForAllEpochs =
