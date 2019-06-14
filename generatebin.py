@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.preprocessing import normalize
 import struct
 import os
+import sys
 data_size = 1862120
 feature_dim = 256
 def generateBinSingleImage(inputfile,outputfile):
