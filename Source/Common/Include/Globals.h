@@ -42,6 +42,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         static std::size_t GetRank() { return m_rank; }
         static void* GetDistGradAggPtr() { return m_distGradAggPtr; }
         static void PrintMpiInfo() { LOGPRINTF(stderr, "Using %d mpi processes, this rank is %d.\n", (int)m_processNum, (int)m_rank); }
+        static void PrintStdoutPath() { LOGPRINTF(stderr, "m_stdoutPath = %s\n", m_stdoutPath.c_str()); }
 
         static void SetStdoutPath(std::string stdoutPath) { m_stdoutPath = stdoutPath; }
         static std::string GetStdoutPath() { return m_stdoutPath; }

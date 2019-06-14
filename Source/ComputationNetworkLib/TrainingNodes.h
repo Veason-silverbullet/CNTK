@@ -464,6 +464,7 @@ public:
     FeatureNormalizeNode(DEVICEID_TYPE deviceId, const wstring& name, size_t normalizeType = 2)
         : Base(deviceId, name), m_normalizeType(normalizeType), m_rank(Globals::GetRank()), m_processNum(Globals::GetProcessNum())
     {
+        Globals::PrintStdoutPath();
         m_featureFile = ofstream(Globals::GetStdoutPath() + "/feature_" + to_string(m_rank) + "_" + to_string(m_processNum) + ".txt", ios::out);
     }
 
