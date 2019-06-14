@@ -27,8 +27,7 @@ if __name__ == '__main__':
                 assert len(feature_lines) == len(path_lines), '%d vs %d' % (len(feature_lines), len(path_lines))
                 num = len(feature_lines)
                 for j in range(num):
-                    s = path_lines[j][22:-1]
-                    result.append((path_dict[s], feature_lines[j].strip('\n').strip(' ')))
+                    result.append((path_dict[path_lines[j]], feature_lines[j].strip('\n').strip(' ')))
         result.sort(key=lambda x: x[0])
         for r in result:
             result_file.write(str(r[0]) + '\t' + r[1] + '\n')
