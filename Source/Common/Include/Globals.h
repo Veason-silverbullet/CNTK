@@ -43,6 +43,10 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         static void* GetDistGradAggPtr() { return m_distGradAggPtr; }
         static void PrintMpiInfo() { LOGPRINTF(stderr, "Using %d mpi processes, this rank is %d.\n", (int)m_processNum, (int)m_rank); }
 
+        static void SetStdoutPath(std::string stdoutPath) { m_stdoutPath = stdoutPath; }
+        static std::string GetStdoutPath() { return m_stdoutPath; }
+        static void PrintStdoutPath() { LOGPRINTF(stderr, "m_stdoutPath = %s\n", m_stdoutPath.c_str()); }
+
         static void SetUseBNMomentum(bool useBNMomentum) { m_useBNMomentum = useBNMomentum; }
         static bool GetUseBNMomentum() { return m_useBNMomentum; }
 
@@ -65,5 +69,6 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         static std::atomic<bool> m_useBNMomentum;
         static std::atomic<double> m_BNMomentum;
 
+        static std::string m_stdoutPath;
     };
 }}}

@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include "Globals.h"
 #include "PackerBase.h"
+#include <fstream>
+using namespace Microsoft::MSR::CNTK;
 
 namespace CNTK {
 
@@ -24,11 +27,21 @@ public:
         m_useLocalTimeline(useLocalTimeline),
         m_globalMinibatchSizeInSamples(0),
         m_localMinibatchSizeInSamples(0)
-    {}
+    {
+        Globals::PrintStdoutPath();
+        m_pathFile = ofstream(Globals::GetStdoutPath() + "/path_" + to_string(Globals::GetRank()) + "_" + to_string(Globals::GetProcessNum()) + ".txt", ios::out);
+    }
+
+    ~SequencePacker()
+    {
+        m_pathFile.close();
+    }
 
     virtual Minibatch ReadMinibatch() override;
 
     void SetConfiguration(const ReaderConfiguration& config, const std::vector<MemoryProviderPtr>& memoryProviders) override;
+
+    ofstream m_pathFile;
 
 protected:
     virtual MBLayoutPtr PackDenseStream(const StreamBatch& batch, size_t streamIndex);
