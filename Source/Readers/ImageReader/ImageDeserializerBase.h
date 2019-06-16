@@ -29,7 +29,7 @@ namespace CNTK {
         ImageDeserializerBase();
 
     protected:
-        void PopulateSequenceData(cv::Mat image, size_t classId, size_t sequenceId, const SequenceKey& sequenceKey, std::vector<SequenceDataPtr>& result);
+        void PopulateSequenceData(cv::Mat image, size_t classId, size_t sequenceId, const SequenceKey& sequenceKey, std::vector<SequenceDataPtr>& result, const string& path = "");
 
         // A helper class for generation of type specific labels (currently float/double only).
         LabelGeneratorPtr m_labelGenerator;

@@ -87,6 +87,20 @@ static void DoEvalBase(const ConfigParameters& config, IDataReader& reader)
 template <typename ElemType>
 void DoEval(const ConfigParameters& config)
 {
+    wstring modelPath = config(L"modelPath");
+    auto getStdoutPath = [](wstring modelPath) {
+        string stdoutPath = "";
+        size_t len = modelPath.length();
+        size_t stopIndex = 0;
+        for (size_t i(0); i < len; ++i)
+            if (modelPath[i] == L'/' || modelPath[i] == L'\\')
+                stopIndex = i;
+        for (size_t i(0); i < stopIndex; ++i)
+            stdoutPath += (char)modelPath[i];
+        return stdoutPath;
+    };
+    Globals::SetStdoutPath(getStdoutPath(modelPath));
+
     // test
     ConfigParameters readerConfig(config(L"reader"));
     readerConfig.Insert("traceLevel", config(L"traceLevel", "0"));
@@ -94,6 +108,9 @@ void DoEval(const ConfigParameters& config)
     {
         readerConfig.Insert("randomize", "None");
     }
+    readerConfig.Insert("rank", to_string(Globals::GetRank()));
+    readerConfig.Insert("processNum", to_string(Globals::GetProcessNum()));
+    readerConfig.Insert("stdoutPath", getStdoutPath(modelPath));
 
     DataReader testDataReader(readerConfig);
     DoEvalBase<ElemType>(config, testDataReader);

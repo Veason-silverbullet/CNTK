@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "ProgressTracing.h"
 #include <atomic>
 
 namespace Microsoft { namespace MSR { namespace CNTK {
@@ -39,6 +40,18 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
         static void SetBNMomentum(double BNMomentum) { m_BNMomentum = BNMomentum; }
         static double GetBNMomentum() { return m_BNMomentum; }
+
+        static void SetProcessNum(std::size_t processNum) { m_processNum = processNum; }
+        static void SetRank(std::size_t rank) { m_rank = rank; }
+        static void SetDistGradAggPtr(void* distGradAggPtr) { m_distGradAggPtr = distGradAggPtr; }
+        static std::size_t GetProcessNum() { return m_processNum; }
+        static std::size_t GetRank() { return m_rank; }
+        static void* GetDistGradAggPtr() { return m_distGradAggPtr; }
+        static void PrintMpiInfo() { LOGPRINTF(stderr, "Using %d mpi processes, this rank is %d.\n", (int)m_processNum, (int)m_rank); }
+        static void PrintStdoutPath() { LOGPRINTF(stderr, "m_stdoutPath = %s\n", m_stdoutPath.c_str()); }
+
+        static void SetStdoutPath(std::string stdoutPath) { m_stdoutPath = stdoutPath; }
+        static std::string GetStdoutPath() { return m_stdoutPath; }
     private:
         static std::atomic<bool> m_forceDeterministicAlgorithms;
         // The global flag to enable matrices values in forward and backward prop
@@ -51,5 +64,11 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         // If m_useBNMomentum == true, the BN Momentum will be overwrote as m_BNMomentum, regardless bnTimeConst.
         static std::atomic<bool> m_useBNMomentum;
         static std::atomic<double> m_BNMomentum;
+
+        static std::size_t m_processNum;
+        static std::size_t m_rank;
+        static void* m_distGradAggPtr;
+
+        static std::string m_stdoutPath;
     };
 }}}
