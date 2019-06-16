@@ -702,18 +702,15 @@ public:
 
             Matrix<ElemType>::Multiply(weight, false, X, false, Value());
 
-            if (Environment().IsTraining())
+            if (m_annealBias)
             {
-                if (m_annealBias)
-                {
-                    m_bias = m_biasBase * pow(1 + m_biasGamma * m_iter, -m_biasPower);
-                    m_bias = std::max(m_bias, m_biasMin);
-                    m_bias = std::min(m_bias, m_biasMax);
-                    ++m_iter;
-                }
-
-                Matrix<ElemType>::LabelAdd(*m_label, (ElemType) m_bias, Value());
+                m_bias = m_biasBase * pow(1 + m_biasGamma * m_iter, -m_biasPower);
+                m_bias = std::max(m_bias, m_biasMin);
+                m_bias = std::min(m_bias, m_biasMax);
+                ++m_iter;
             }
+
+            Matrix<ElemType>::LabelAdd(*m_label, (ElemType) m_bias, Value());
         }
     }
 
