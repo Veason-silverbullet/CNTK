@@ -4335,11 +4335,6 @@ public:
     GlobalConcatNode(DEVICEID_TYPE deviceId, const wstring& name, size_t blockIndex = 0, size_t growthRate = 0, size_t segmentIndex = 0, size_t segmentNum = 0)
         : Base(deviceId, name), m_blockIndex(blockIndex), m_growthRate(growthRate), m_segmentIndex(segmentIndex), m_segmentNum(segmentNum)
     {
-        if (0 == m_segmentIndex)
-        {
-            m_valueGlobalMemoryBlockMap<ElemType>[m_blockIndex] = make_shared<GlobalMemoryBlock<ElemType>>();
-            m_gradientGlobalMemoryBlockMap<ElemType>[m_blockIndex] = make_shared<GlobalMemoryBlock<ElemType>>();
-        }
     }
 
     ~GlobalConcatNode()
@@ -4392,6 +4387,11 @@ public:
 
         if (m_dims.size() == 0)
         {
+            if (0 == m_segmentIndex)
+            {
+                m_valueGlobalMemoryBlockMap<ElemType>[m_blockIndex] = make_shared<GlobalMemoryBlock<ElemType>>();
+                m_gradientGlobalMemoryBlockMap<ElemType>[m_blockIndex] = make_shared<GlobalMemoryBlock<ElemType>>();
+            }
             m_valueGlobalMemoryBlock = m_valueGlobalMemoryBlockMap<ElemType>[m_blockIndex];
             m_gradientGlobalMemoryBlock = m_gradientGlobalMemoryBlockMap<ElemType>[m_blockIndex];
 
