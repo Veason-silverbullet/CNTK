@@ -226,6 +226,7 @@ MBLayoutPtr SequencePacker::PackDenseStream(const StreamBatch& batch, size_t str
             }
         }
     }
+    m_pathFile.flush();
 
     return pMBLayout;
 }
