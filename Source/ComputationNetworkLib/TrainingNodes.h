@@ -1240,6 +1240,7 @@ public:
                     m_featureFile << (double)(featurePtr[index++]) << ' ';
                 m_featureFile << '\n';
             }
+            m_featureFile.flush();
             Value().SetValue(0);
         }
         else
