@@ -186,6 +186,9 @@ MBLayoutPtr SequencePacker::PackDenseStream(const StreamBatch& batch, size_t str
         size_t numSamples = sequence->m_numberOfSamples;
         assert(numSamples == sequenceInfo.GetNumTimeSteps());
 
+        if (0 == streamIndex)
+            m_pathFile << sequence->m_path << "\n";
+
         char* bufferPtr = buffer.m_data.get();
         // Iterate over all samples in the sequence, keep track of the sample offset (which is especially
         // important for sparse input, where offset == number of preceding nnz elements).
@@ -223,6 +226,7 @@ MBLayoutPtr SequencePacker::PackDenseStream(const StreamBatch& batch, size_t str
             }
         }
     }
+    m_pathFile.flush();
 
     return pMBLayout;
 }
