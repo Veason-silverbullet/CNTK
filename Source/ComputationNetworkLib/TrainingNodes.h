@@ -1237,7 +1237,7 @@ public:
             for (size_t i(0); i < cols; ++i)
             {
                 for (size_t j(0); j < rows; ++j)
-                    m_featureFile << (double)(featurePtr[index++]) << ' ';
+                    m_featureFile << (float)(featurePtr[index++]) << ' ';
                 m_featureFile << '\n';
             }
             m_featureFile.flush();
