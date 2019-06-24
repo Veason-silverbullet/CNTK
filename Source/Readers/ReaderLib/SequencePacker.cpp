@@ -187,7 +187,14 @@ MBLayoutPtr SequencePacker::PackDenseStream(const StreamBatch& batch, size_t str
         assert(numSamples == sequenceInfo.GetNumTimeSteps());
 
         if (0 == streamIndex)
+        {
+            if (!initFlag)
+            {
+                m_pathFile = ofstream(Globals::GetStdoutPath() + "/path_" + to_string(Globals::GetRank()) + "_" + to_string(Globals::GetProcessNum()) + ".txt", ios::out);
+                initFlag = true;
+            }
             m_pathFile << sequence->m_path << "\n";
+        }
 
         char* bufferPtr = buffer.m_data.get();
         // Iterate over all samples in the sequence, keep track of the sample offset (which is especially
