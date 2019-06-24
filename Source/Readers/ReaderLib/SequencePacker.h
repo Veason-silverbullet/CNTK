@@ -29,7 +29,7 @@ public:
         m_localMinibatchSizeInSamples(0)
     {
         Globals::PrintStdoutPath();
-        m_pathFile = ofstream(Globals::GetStdoutPath() + "/path_" + to_string(Globals::GetRank()) + "_" + to_string(Globals::GetProcessNum()) + ".txt", ios::out);
+        initFlag = false;
     }
 
     ~SequencePacker()
@@ -41,6 +41,7 @@ public:
 
     void SetConfiguration(const ReaderConfiguration& config, const std::vector<MemoryProviderPtr>& memoryProviders) override;
 
+    bool initFlag;
     ofstream m_pathFile;
 
 protected:
