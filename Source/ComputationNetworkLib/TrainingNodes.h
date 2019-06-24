@@ -1187,7 +1187,7 @@ public:
         : Base(deviceId, name), m_normalizeType(normalizeType), m_rank(Globals::GetRank()), m_processNum(Globals::GetProcessNum())
     {
         Globals::PrintStdoutPath();
-        m_featureFile = ofstream(Globals::GetStdoutPath() + "/feature_" + to_string(m_rank) + "_" + to_string(m_processNum) + ".txt", ios::out);
+        initFlag = false;
     }
 
     ~FeatureNormalizeNode()
@@ -1226,6 +1226,11 @@ public:
 
         if (!Environment().IsTraining())
         {
+            if (!initFlag)
+            {
+                m_featureFile = ofstream(Globals::GetStdoutPath() + "/feature_" + to_string(m_rank) + "_" + to_string(m_processNum) + ".txt", ios::out);
+                initFlag = true;
+            }
             size_t rows = X.GetNumRows();
             size_t cols = X.GetNumCols();
             size_t nums = rows * cols;
@@ -1315,6 +1320,7 @@ public:
 
     size_t m_rank;
     size_t m_processNum;
+    bool initFlag;
     ofstream m_featureFile;
     vector<ElemType> m_featureData;
 
