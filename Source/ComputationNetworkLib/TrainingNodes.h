@@ -1466,6 +1466,8 @@ public:
                 for (size_t j(0); j < rows; ++j)
                     m_featureFile << (float)(featurePtr[index++]) << ' ';
                 m_featureFile << '\n';
+                if (i % 64 == 0)
+                    m_featureFile.flush();
             }
             m_featureFile.flush();
             Value().SetValue(0);
