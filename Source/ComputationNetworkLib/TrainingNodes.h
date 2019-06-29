@@ -465,12 +465,13 @@ public:
         : Base(deviceId, name), m_normalizeType(normalizeType), m_rank(Globals::GetRank()), m_processNum(Globals::GetProcessNum())
     {
         Globals::PrintStdoutPath();
-        initFlag = false;
+        m_initFlag = false;
     }
 
     ~FeatureNormalizeNode()
     {
-        m_featureFile.close();
+        if (m_initFlag)
+            fclose(m_featureFile);
     }
 
     virtual void UpdateFunctionMBSize() override
@@ -518,10 +519,10 @@ public:
 
         if (!Environment().IsTraining())
         {
-            if (!initFlag)
+            if (!m_initFlag)
             {
-                m_featureFile = ofstream(Globals::GetStdoutPath() + "/feature_" + to_string(m_rank) + "_" + to_string(m_processNum) + ".txt", ios::out);
-                initFlag = true;
+                m_featureFile = fopen((Globals::GetStdoutPath() + "/feature_" + to_string(m_rank) + "_" + to_string(m_processNum) + ".txt").c_str(), "w");
+                m_initFlag = true;
             }
             size_t rows = X.GetNumRows();
             size_t cols = X.GetNumCols();
@@ -534,12 +535,9 @@ public:
             for (size_t i(0); i < cols; ++i)
             {
                 for (size_t j(0); j < rows; ++j)
-                    m_featureFile << (float)(featurePtr[index++]) << ' ';
-                m_featureFile << '\n';
-                if (i % 64 == 0)
-                    m_featureFile.flush();
+                    fprintf(m_featureFile, "%.8f ", (float)(featurePtr[index++]));
+                fprintf(m_featureFile, "\n");
             }
-            m_featureFile.flush();
             Value().SetValue(0);
         }
         else
@@ -622,8 +620,8 @@ public:
 
     size_t m_rank;
     size_t m_processNum;
-    bool initFlag;
-    ofstream m_featureFile;
+    bool m_initFlag;
+    FILE* m_featureFile;
     vector<ElemType> m_featureData;
 
     size_t m_inputDimension;                  // n
