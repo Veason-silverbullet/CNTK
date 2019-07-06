@@ -553,8 +553,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         m_pASGDHelper->InitModel(learnableNodes);
     }
 
-    wstring finetuneModelPath = Globals::SetFinetuneModelPath();
-    if (!Globals::GetLoadNetworkFromCheckPoint() && finetuneModelPath != L"")
+    if (!Globals::GetLoadNetworkFromCheckPoint() && m_finetuneModelPath != L"")
     {
         auto wstr2str = [](std::wstring wstr) {
             std::string str = "";
@@ -563,9 +562,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                 str += (char)wstr[i];
             return str;
         };
-        ifstream finetuneModelFile(wstr2str(finetuneModelPath), ios::binary | ios::in);
+        ifstream finetuneModelFile(wstr2str(m_finetuneModelPath), ios::binary | ios::in);
         if (!finetuneModelFile)
-            LogicError("Finetune model error: can not open %ls", finetuneModelPath.c_str());
+            LogicError("Finetune model error: can not open %ls", m_finetuneModelPath.c_str());
         std::map<wstring, ParameterMatrix> parameterMap;
         while (true)
         {
@@ -626,6 +625,8 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                 parameterMap.erase(parameterMap.find(paramsNodeName));
             }
         }
+        for (auto parameterIter : parameterMap)
+            fprintf(stderr, "Finetune model warning: %ls is not loaded\n", parameterIter.first.c_str());
         parameterMap.clear();
     }
 
