@@ -65,8 +65,6 @@
   
   <ItemGroup>
     <PackageReference Include="CoreCompat.System.Drawing" Version="1.0.0-beta006" />
-    
-    <ProjectReference Include="..\..\..\..\bindings\csharp\CNTKLibraryManagedDll\CNTKLibraryManagedDll.csproj" />
   </ItemGroup>  
 
 </Project>

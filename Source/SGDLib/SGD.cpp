@@ -553,6 +553,83 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         m_pASGDHelper->InitModel(learnableNodes);
     }
 
+    wstring finetuneModelPath = Globals::SetFinetuneModelPath();
+    if (!Globals::GetLoadNetworkFromCheckPoint() && finetuneModelPath == L"")
+    {
+        auto wstr2str = [](std::wstring wstr) {
+            std::string str = "";
+            size_t len = wstr.length();
+            for (size_t i(0); i < len; ++i)
+                str += (char)wstr[i];
+            return str;
+        };
+        ifstream finetuneModelFile(wstr2str(finetuneModelPath), ios::binary | ios::in);
+        if (!finetuneModelFile)
+            LogicError("Finetune model error: can not open %ls", finetuneModelPath.c_str());
+        std::map<wstring, ParameterMatrix> parameterMap;
+        while (true)
+        {
+            int len = -1;
+            finetuneModelFile.read((char*)(&len), sizeof(int));
+            if (len < 0)
+                break;
+            std::wstring str;
+            str.resize(len);
+            for (int i(0); i < len; ++i)
+            {
+#ifdef __UNIX__
+                char16_t _ch;
+                finetuneModelFile.read((char*)(&_ch), sizeof(char16_t));
+                char32_t ch = _ch;
+#else
+                wchar_t ch;
+                finetuneModelFile.read((char*)(&ch), sizeof(wchar_t));
+#endif
+                str[i] = ch;
+            }
+            int rows, cols;
+            finetuneModelFile.read((char*)(&rows), sizeof(int));
+            finetuneModelFile.read((char*)(&cols), sizeof(int));
+            fprintf(stderr, "Loading parameter: %ls, shape = [%d, %d]\n", str.c_str(), rows, cols);
+            int index = 0;
+            ParameterMatrix parameterMatrix(rows, cols);
+            for (int i(0); i < cols; ++i)
+            {
+                for (int j(0); j < rows; ++j)
+                {
+                    float temp;
+                    finetuneModelFile.read((char*)(&temp), sizeof(float));
+                    parameterMatrix.data[index++] = temp;
+                }
+            }
+            parameterMap[str] = parameterMatrix;
+        }
+        finetuneModelFile.close();
+
+        for (auto nodeIter = learnableNodes.begin(); nodeIter != learnableNodes.end(); nodeIter++)
+        {
+            ComputationNodePtr node = dynamic_pointer_cast<ComputationNode<ElemType>>(*nodeIter);
+            if (node->IsParameterUpdateRequired())
+            {
+                int deviceId = node->GetDeviceId();
+                auto paramsNode = dynamic_pointer_cast<LearnableParameter<ElemType>>(node);
+                auto& paramsNodeValue = paramsNode->Value();
+                wstring paramsNodeName = paramsNode->NodeName();
+                if (parameterMap.find(paramsNodeName) == parameterMap.end())
+                    LogicError("Finetune model error: %ls not found", paramsNodeName.c_str());
+                ParameterMatrix parameterMatrix = parameterMap[paramsNodeName];
+                if (parameterMatrix.rows != paramsNodeValue.GetNumRows() || parameterMatrix.cols != paramsNodeValue.GetNumCols())
+                    LogicError("Finetune model error: parameter shape not match [%d, %d] v.s. [%d, %d]", parameterMatrix.rows, parameterMatrix.cols, (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
+
+                fprintf(stderr, "Finetune model loading: %ls is initialized by finetune model, shape = [%d, %d]\n", paramsNodeName.c_str(), (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
+                paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data));
+                parameterMap.erase(parameterMap.find(paramsNodeName));
+            }
+        }
+        parameterMap.clear();
+    }
+
+
     // Create TensorBoard writer if needed. When using parallel training, make sure that only Rank 0 actually writes logs.
     ::CNTK::Internal::TensorBoardFileWriterPtr tensorBoardWriter;
     if (!m_tensorBoardLogDir.empty() && (m_mpi == nullptr || m_mpi->CurrentNodeRank() == 0))

@@ -48,6 +48,11 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
         static void SetBNMomentum(double BNMomentum) { m_BNMomentum = BNMomentum; }
         static double GetBNMomentum() { return m_BNMomentum; }
+
+        static void SetLoadNetworkFromCheckPoint(bool loadNetworkFromCheckPoint) { m_loadNetworkFromCheckPoint = loadNetworkFromCheckPoint; }
+        static bool GetLoadNetworkFromCheckPoint() { return m_loadNetworkFromCheckPoint; }
+        static void SetFinetuneModelPath(std::wstring finetuneModelPath) { m_finetuneModelPath = finetuneModelPath; }
+        static std::wstring SetFinetuneModelPath() { return m_finetuneModelPath; }
     private:
         static std::atomic<bool> m_forceDeterministicAlgorithms;
         // The global flag to enable matrices values in forward and backward prop
@@ -65,5 +70,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         static std::atomic<bool> m_useBNMomentum;
         static std::atomic<double> m_BNMomentum;
 
+        static bool m_loadNetworkFromCheckPoint;
+        static std::wstring m_finetuneModelPath;
     };
 }}}

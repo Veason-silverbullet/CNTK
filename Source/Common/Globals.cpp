@@ -24,4 +24,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
     void* Globals::m_distGradAggPtr(NULL);
     std::atomic<bool> Globals::m_useBNMomentum(false);
     std::atomic<double> Globals::m_BNMomentum(1.0);
+
+    bool Globals::m_loadNetworkFromCheckPoint(false);
+    std::wstring Globals::m_finetuneModelPath(L"");
 }}}
