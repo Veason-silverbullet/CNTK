@@ -40,15 +40,11 @@ struct ParameterMatrix
     ParameterMatrix() {}
     ParameterMatrix(int rows, int cols) :rows(rows), cols(cols)
     {
-        data = new float[rows * cols];
-    }
-    ~ParameterMatrix()
-    {
-        delete[] data;
+        data.resize(rows * cols);
     }
     int rows;
     int cols;
-    float* data;
+    vector<float> data;
 };
 
 struct BestEpoch;
@@ -467,6 +463,7 @@ public:
 		InitializeAdditionalOptimizerInfo();
 
         m_finetuneModelPath = (std::wstring)configSGD(L"finetuneModelPath", L"");
+        m_finetuneBN = configSGD(L"finetuneBN", true);
     }
     // note: This must be in the header, as we cannot properly specialize this constructor in the CPP to make sure all versions are generated.
 
@@ -704,6 +701,7 @@ protected:
     std::wstring m_modelPath;
     std::wstring m_modelName;
     std::wstring m_finetuneModelPath;
+    bool m_finetuneBN;
     bool m_keepCheckPointFiles;
     bool m_saveBestModelPerCriterion;
     // Mapping from criterion to the best epoch on validation data set.

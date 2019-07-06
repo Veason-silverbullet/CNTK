@@ -590,8 +590,32 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                     LogicError("Finetune model error: parameter shape not match [%d, %d] v.s. [%d, %d]", parameterMatrix.rows, parameterMatrix.cols, (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
 
                 fprintf(stderr, "Finetune model loading: %ls is initialized by finetune model, shape = [%d, %d]\n", paramsNodeName.c_str(), (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
-                paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data));
+                paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data.data()));
                 parameterMap.erase(parameterMap.find(paramsNodeName));
+            }
+        }
+        if (m_finetuneBN)
+        {
+            auto batchNormalizationNodes = net->GetNodesWithType(OperationNameOf(BatchNormalizationNode), criterionNodes[0]);
+            for (auto& nodeIter : batchNormalizationNodes)
+            {
+                for (size_t inputIndex(3); inputIndex <= 5; ++inputIndex)
+                {
+                    auto node = nodeIter->Input(inputIndex);
+                    int deviceId = node->GetDeviceId();
+                    auto paramsNode = dynamic_pointer_cast<LearnableParameter<ElemType>>(node);
+                    auto& paramsNodeValue = paramsNode->Value();
+                    wstring paramsNodeName = paramsNode->NodeName();
+                    if (parameterMap.find(paramsNodeName) == parameterMap.end())
+                        LogicError("Finetune model error: %ls not found", paramsNodeName.c_str());
+                    ParameterMatrix parameterMatrix = parameterMap[paramsNodeName];
+                    if (parameterMatrix.rows != paramsNodeValue.GetNumRows() || parameterMatrix.cols != paramsNodeValue.GetNumCols())
+                        LogicError("Finetune model error: parameter shape not match [%d, %d] v.s. [%d, %d]", parameterMatrix.rows, parameterMatrix.cols, (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
+
+                    fprintf(stderr, "Finetune model loading: %ls is initialized by finetune model, shape = [%d, %d]\n", paramsNodeName.c_str(), (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
+                    paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data.data()));
+                    parameterMap.erase(parameterMap.find(paramsNodeName));
+                }
             }
         }
         for (auto parameterIter : parameterMap)
