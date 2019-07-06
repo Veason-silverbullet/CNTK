@@ -517,7 +517,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
 
 
     wstring finetuneModelPath = Globals::SetFinetuneModelPath();
-    if (!Globals::GetLoadNetworkFromCheckPoint() && finetuneModelPath == L"")
+    if (!Globals::GetLoadNetworkFromCheckPoint() && finetuneModelPath != L"")
     {
         auto wstr2str = [](std::wstring wstr) {
             std::string str = "";
