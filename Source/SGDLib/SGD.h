@@ -422,7 +422,7 @@ public:
     {
         msra::files::make_intermediate_dirs(m_modelPath);
 
-        m_finetuneModelPath = configSGD(L"finetuneModelPath", L"");
+        m_finetuneModelPath = (std::wstring)configSGD(L"finetuneModelPath", L"");
     }
     // note: This must be in the header, as we cannot properly specialize this constructor in the CPP to make sure all versions are generated.
 
