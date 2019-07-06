@@ -516,8 +516,7 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
     }
 
 
-    wstring finetuneModelPath = Globals::SetFinetuneModelPath();
-    if (!Globals::GetLoadNetworkFromCheckPoint() && finetuneModelPath != L"")
+    if (!Globals::GetLoadNetworkFromCheckPoint() && m_finetuneModelPath != L"")
     {
         auto wstr2str = [](std::wstring wstr) {
             std::string str = "";
@@ -526,9 +525,9 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                 str += (char)wstr[i];
             return str;
         };
-        ifstream finetuneModelFile(wstr2str(finetuneModelPath), ios::binary | ios::in);
+        ifstream finetuneModelFile(wstr2str(m_finetuneModelPath), ios::binary | ios::in);
         if (!finetuneModelFile)
-            LogicError("Finetune model error: can not open %ls", finetuneModelPath.c_str());
+            LogicError("Finetune model error: can not open %ls", m_finetuneModelPath.c_str());
         std::map<wstring, ParameterMatrix> parameterMap;
         while (true)
         {
@@ -572,8 +571,26 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
         for (auto nodeIter = learnableNodes.begin(); nodeIter != learnableNodes.end(); nodeIter++)
         {
             ComputationNodePtr node = dynamic_pointer_cast<ComputationNode<ElemType>>(*nodeIter);
-            if (node->IsParameterUpdateRequired())
+            int deviceId = node->GetDeviceId();
+            auto paramsNode = dynamic_pointer_cast<LearnableParameter<ElemType>>(node);
+            auto& paramsNodeValue = paramsNode->Value();
+            wstring paramsNodeName = paramsNode->NodeName();
+            if (parameterMap.find(paramsNodeName) == parameterMap.end())
+                LogicError("Finetune model error: %ls not found", paramsNodeName.c_str());
+            ParameterMatrix parameterMatrix = parameterMap[paramsNodeName];
+            if (parameterMatrix.rows != paramsNodeValue.GetNumRows() || parameterMatrix.cols != paramsNodeValue.GetNumCols())
+                LogicError("Finetune model error: parameter shape not match [%d, %d] v.s. [%d, %d]", parameterMatrix.rows, parameterMatrix.cols, (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
+
+            fprintf(stderr, "Finetune model loading: %ls is initialized by finetune model, shape = [%d, %d]\n", paramsNodeName.c_str(), (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
+            paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data.data()));
+            parameterMap.erase(parameterMap.find(paramsNodeName));
+        }
+        auto batchNormalizationNodes = net->GetNodesWithType(OperationNameOf(BatchNormalizationNode), criterionNodes[0]);
+        for (auto& nodeIter : batchNormalizationNodes)
+        {
+            for (size_t inputIndex(3); inputIndex <= 5; ++inputIndex)
             {
+                auto node = nodeIter->Input(inputIndex);
                 int deviceId = node->GetDeviceId();
                 auto paramsNode = dynamic_pointer_cast<LearnableParameter<ElemType>>(node);
                 auto& paramsNodeValue = paramsNode->Value();
@@ -585,10 +602,12 @@ void SGD<ElemType>::TrainOrAdaptModel(int startEpoch, ComputationNetworkPtr net,
                     LogicError("Finetune model error: parameter shape not match [%d, %d] v.s. [%d, %d]", parameterMatrix.rows, parameterMatrix.cols, (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
 
                 fprintf(stderr, "Finetune model loading: %ls is initialized by finetune model, shape = [%d, %d]\n", paramsNodeName.c_str(), (int)paramsNodeValue.GetNumRows(), (int)paramsNodeValue.GetNumCols());
-                paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data));
+                paramsNodeValue.SetValue(parameterMatrix.rows, parameterMatrix.cols, deviceId, reinterpret_cast<ElemType*>(parameterMatrix.data.data()));
                 parameterMap.erase(parameterMap.find(paramsNodeName));
             }
         }
+        for (auto parameterIter : parameterMap)
+            fprintf(stderr, "Finetune model warning: %ls is not loaded\n", parameterIter.first.c_str());
         parameterMap.clear();
     }
 
