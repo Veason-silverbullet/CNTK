@@ -18,4 +18,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
     std::atomic<bool> Globals::m_optimizeGradientAccumulation(true);
     std::atomic<bool> Globals::m_enableNodeTiming(false);
     std::atomic<std::size_t> Globals::m_mpiPackThresholdInBytes(DEFAULT_PACK_THRESHOLD_SIZE_IN_BYTES);
+
+    bool Globals::m_loadNetworkFromCheckPoint(false);
+    std::wstring Globals::m_finetuneModelPath(L"");
 }}}

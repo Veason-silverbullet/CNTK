@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "ProgressTracing.h"
 #include <atomic>
 
 namespace Microsoft { namespace MSR { namespace CNTK {
@@ -33,6 +34,11 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
         static void SetMPIPackThreshold(std::size_t packThreholdInBytes) { m_mpiPackThresholdInBytes = packThreholdInBytes; }
         static std::size_t GetMPIPackThreshold() { return m_mpiPackThresholdInBytes; }
+
+        static void SetLoadNetworkFromCheckPoint(bool loadNetworkFromCheckPoint) { m_loadNetworkFromCheckPoint = loadNetworkFromCheckPoint; }
+        static bool GetLoadNetworkFromCheckPoint() { return m_loadNetworkFromCheckPoint; }
+        static void SetFinetuneModelPath(std::wstring finetuneModelPath) { m_finetuneModelPath = finetuneModelPath; }
+        static std::wstring SetFinetuneModelPath() { return m_finetuneModelPath; }
     private:
         static std::atomic<bool> m_forceDeterministicAlgorithms;
         // The global flag to enable matrices values in forward and backward prop
@@ -41,5 +47,8 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         static std::atomic<bool> m_optimizeGradientAccumulation;
         static std::atomic<bool> m_enableNodeTiming;
         static std::atomic<std::size_t> m_mpiPackThresholdInBytes;
+
+        static bool m_loadNetworkFromCheckPoint;
+        static std::wstring m_finetuneModelPath;
     };
 }}}

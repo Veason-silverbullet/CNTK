@@ -35,6 +35,22 @@ namespace CNTK { namespace Internal {
 
 namespace Microsoft { namespace MSR { namespace CNTK {
 
+struct ParameterMatrix
+{
+    ParameterMatrix() {}
+    ParameterMatrix(int rows, int cols) :rows(rows), cols(cols)
+    {
+        data = new float[rows * cols];
+    }
+    ~ParameterMatrix()
+    {
+        delete[] data;
+    }
+    int rows;
+    int cols;
+    float* data;
+};
+
 struct BestEpoch;
 
 enum class LearningRateSearchAlgorithm : int
@@ -409,6 +425,9 @@ public:
           m_gradHeader(nullptr)
     {
         msra::files::make_intermediate_dirs(m_modelPath);
+
+        wstring finetuneModelPath = configSGD(L"finetuneModelPath", L"");
+        Globals::SetFinetuneModelPath(finetuneModelPath);
     }
     // note: This must be in the header, as we cannot properly specialize this constructor in the CPP to make sure all versions are generated.
 
