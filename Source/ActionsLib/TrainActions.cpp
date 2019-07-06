@@ -104,6 +104,7 @@ void DoTrain(const ConfigRecordType& config)
     if (!fexists(modelFileName.c_str()))
         modelFileName = optimizer->GetModelName(int(startEpoch) - 1);
     bool loadNetworkFromCheckpoint = startEpoch >= 0;
+    Globals::SetLoadNetworkFromCheckPoint(loadNetworkFromCheckpoint);
     if (loadNetworkFromCheckpoint)
         LOGPRINTF(stderr, "\nStarting from checkpoint. Loading network from '%ls'.\n", modelFileName.c_str());
     else if (traceLevel > 0)

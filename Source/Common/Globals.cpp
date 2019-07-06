@@ -21,4 +21,6 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
     std::atomic<bool> Globals::m_useBNMomentum(false);
     std::atomic<double> Globals::m_BNMomentum(1.0);
+
+    bool Globals::m_loadNetworkFromCheckPoint(false);
 }}}
