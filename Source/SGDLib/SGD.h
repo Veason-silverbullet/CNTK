@@ -423,6 +423,7 @@ public:
         msra::files::make_intermediate_dirs(m_modelPath);
 
         m_finetuneModelPath = (std::wstring)configSGD(L"finetuneModelPath", L"");
+        m_finetuneBN = configSGD(L"finetuneBN", true);
     }
     // note: This must be in the header, as we cannot properly specialize this constructor in the CPP to make sure all versions are generated.
 
@@ -635,6 +636,7 @@ public:
 protected:
     std::wstring m_modelPath;
     std::wstring m_finetuneModelPath;
+    bool m_finetuneBN;
     bool m_keepCheckPointFiles;
     bool m_saveBestModelPerCriterion;
     // Mapping from criterion to the best epoch on validation data set.
