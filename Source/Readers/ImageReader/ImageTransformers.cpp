@@ -37,6 +37,8 @@ SequenceDataPtr ImageTransformerBase::Transform(SequenceDataPtr sequence, int in
     result->m_copyIndex = inputSequence->m_copyIndex;
     result->m_key = inputSequence->m_key;
 
+    result->m_path = std::move(inputSequence->m_path);
+
     ImageDimensions outputDimensions(inputSequence->m_image.cols, inputSequence->m_image.rows, inputSequence->m_image.channels());
     auto dims = outputDimensions.AsTensorShape(HWC).GetDims();
     result->m_sampleShape = NDShape(std::vector<size_t>(dims.begin(), dims.end()));
@@ -551,6 +553,8 @@ SequenceDataPtr TransposeTransformer::TypedTranspose<TElementTo>::Apply(ImageSeq
     NDShape resultShape(std::vector<size_t>(dims.begin(), dims.end()));
     auto result = std::make_shared<DenseSequenceWithBuffer<TElementTo>>(m_memBuffers, count, resultShape);
     result->m_key = inputSequence->m_key;
+
+    result->m_path = std::move(inputSequence->m_path);
 
     auto dst = result->GetBuffer();
 

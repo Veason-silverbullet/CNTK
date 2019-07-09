@@ -20,6 +20,8 @@
 #include "DataTransferer.h"
 #include "PerformanceProfiler.h"
 
+#include "Globals.h"
+
 namespace CNTK {
 
 using namespace Microsoft::MSR::CNTK;
@@ -68,6 +70,14 @@ ReaderShim<ElemType>::ReaderShim(ReaderPtr reader) :
 template <class ElemType>
 void ReaderShim<ElemType>::Init(const ConfigParameters& config)
 {
+    size_t rank = config("rank");
+    size_t processNum = config("processNum");
+    string stdoutPath = config("stdoutPath");
+    Globals::SetRank(rank);
+    Globals::SetProcessNum(processNum);
+    Globals::SetStdoutPath(stdoutPath);
+    Globals::PrintMpiInfo();
+
     intargvector numberOfuttsPerMinibatchForAllEpochs =
         config(L"nbruttsineachrecurrentiter", ConfigParameters::Array(intargvector(vector<int> { 1 })));
 

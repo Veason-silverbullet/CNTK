@@ -89,6 +89,8 @@ namespace CNTK {
         bool m_isValid;           /// Flag indicating if sequence is valid.
         SequenceKey m_key;        /// Sequence key.
         std::shared_ptr<uint8_t> m_holdingBuffer; /// Hold reference to data buffer when sequence shares memory with it
+
+        std::string m_path;
     };
     typedef std::shared_ptr<SequenceDataBase> SequenceDataPtr;
 

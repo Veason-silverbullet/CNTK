@@ -61,12 +61,17 @@ public:
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override
     {
-        auto& probs = InputRef(1).Value();
-        probs.VectorMax(*m_maxIndexes, *m_maxValues, true);
-        if (DistributedGatheredLabels<ElemType>::isInitializeNode(this))
-            DistributedGatheredLabels<ElemType>::gatherDistributedLabels(InputRef(0).Value());
-        m_distGradAggPtr->DistributedAllReduce(*m_maxValues, MPI_MAX);
-        Matrix<ElemType>::DistributedAssignClassificationError(*DistributedGatheredLabels<ElemType>::m_gatheredLabels, probs, *m_maxValues, Value(), m_probDim * m_rank, m_probDim * (m_rank + 1) - 1);
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
+        {
+            auto& probs = InputRef(1).Value();
+            probs.VectorMax(*m_maxIndexes, *m_maxValues, true);
+            if (DistributedGatheredLabels<ElemType>::isInitializeNode(this))
+                DistributedGatheredLabels<ElemType>::gatherDistributedLabels(InputRef(0).Value());
+            m_distGradAggPtr->DistributedAllReduce(*m_maxValues, MPI_MAX);
+            Matrix<ElemType>::DistributedAssignClassificationError(*DistributedGatheredLabels<ElemType>::m_gatheredLabels, probs, *m_maxValues, Value(), m_probDim * m_rank, m_probDim * (m_rank + 1) - 1);
+        }
     }
 
     virtual void /*ComputationNodeBase::*/ Validate(bool isFinalValidationPass) override
@@ -82,6 +87,8 @@ public:
     {
         Base::UpdateFunctionMBSize();
 
+        if (!Environment().IsTraining())
+            return;
         if (1 == m_processNum)
             LogicError("Multi Gpus and mpi is needed in distributed FC.");
         size_t cols = Input(1)->Value().GetNumCols();
@@ -180,18 +187,23 @@ public:
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override
     {
-        FrameRange fr(InputRef(0).GetMBLayout());
-        InputRef(0).ValueFor(fr).VectorMax(*m_maxIndexes0, *m_maxValues, true);
-        InputRef(1).ValueFor(fr).VectorMax(*m_maxIndexes1, *m_maxValues, true, m_topK);
-        MaskMissingColumnsToZero(*m_maxIndexes0, InputRef(0).GetMBLayout(), fr);
-        MaskMissingColumnsToZero(*m_maxIndexes1, InputRef(1).GetMBLayout(), fr);
-        Value().AssignNumOfDiff(*m_maxIndexes0, *m_maxIndexes1, m_topK > 1);
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
+        {
+            FrameRange fr(InputRef(0).GetMBLayout());
+            InputRef(0).ValueFor(fr).VectorMax(*m_maxIndexes0, *m_maxValues, true);
+            InputRef(1).ValueFor(fr).VectorMax(*m_maxIndexes1, *m_maxValues, true, m_topK);
+            MaskMissingColumnsToZero(*m_maxIndexes0, InputRef(0).GetMBLayout(), fr);
+            MaskMissingColumnsToZero(*m_maxIndexes1, InputRef(1).GetMBLayout(), fr);
+            Value().AssignNumOfDiff(*m_maxIndexes0, *m_maxIndexes1, m_topK > 1);
 #if NANCHECK
-        Value().HasNan("ClassificationError");
+            Value().HasNan("ClassificationError");
 #endif
 #if DUMPOUTPUT
-        Value().Print("ClassificationErrorNode");
+            Value().Print("ClassificationErrorNode");
 #endif
+        }
     }
 
     virtual void /*ComputationNodeBase::*/ Validate(bool isFinalValidationPass) override
@@ -212,6 +224,8 @@ public:
     {
         Base::UpdateFunctionMBSize();
 
+        if (!Environment().IsTraining())
+            return;
         // resize the temporaries to their proper size
         size_t cols = Input(0)->Value().GetNumCols();
         m_maxIndexes0->Resize(m_topK, cols);
