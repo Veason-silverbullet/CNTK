@@ -81,7 +81,8 @@ using namespace Microsoft::MSR::CNTK;
         size_t classId,
         size_t copyId,
         const SequenceKey& sequenceKey,
-        std::vector<SequenceDataPtr>& result)
+        std::vector<SequenceDataPtr>& result,
+        const string& path)
     {
         auto imageData = make_shared<ImageSequenceData>();
         if (!image.data)
@@ -106,6 +107,8 @@ using namespace Microsoft::MSR::CNTK;
             imageData->m_elementType = dataType;
             imageData->m_isValid = true;
             imageData->m_key = sequenceKey;
+
+            imageData->m_path = std::move(path);
         }
         result.push_back(imageData);
 

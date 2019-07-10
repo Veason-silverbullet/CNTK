@@ -415,6 +415,8 @@ public:
 
     virtual void UpdateFunctionMBSize() override
     {
+        if (!Environment().IsTraining())
+            return;
         size_t minibatchSize = InputRef(0).Value().GetNumCols();
         if (m_minibatchSize != minibatchSize)
         {
@@ -443,19 +445,24 @@ public:
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override
     {
-        auto& Y = InputRef(1).Value();
-        Y.VectorMax(*m_temp1, *m_temp2, true);
-        if (DistributedGatheredLabels<ElemType>::isInitializeNode(this))
-            DistributedGatheredLabels<ElemType>::gatherDistributedLabels(InputRef(0).Value());
-        m_distGradAggPtr->DistributedAllReduce(*m_temp2, MPI_MAX);
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
+        {
+            auto& Y = InputRef(1).Value();
+            Y.VectorMax(*m_temp1, *m_temp2, true);
+            if (DistributedGatheredLabels<ElemType>::isInitializeNode(this))
+                DistributedGatheredLabels<ElemType>::gatherDistributedLabels(InputRef(0).Value());
+            m_distGradAggPtr->DistributedAllReduce(*m_temp2, MPI_MAX);
 
-        Matrix<ElemType>::MinusRowVector(Y, *m_temp2, Y);
-        Matrix<ElemType>::AssignExpSum(Y, *m_temp1);
-        m_distGradAggPtr->DistributedAllReduce(*m_temp1, MPI_SUM);
-        m_temp1->InplaceLog();
+            Matrix<ElemType>::MinusRowVector(Y, *m_temp2, Y);
+            Matrix<ElemType>::AssignExpSum(Y, *m_temp1);
+            m_distGradAggPtr->DistributedAllReduce(*m_temp1, MPI_SUM);
+            m_temp1->InplaceLog();
 
-        Matrix<ElemType>::DistributedSoftmax(Y, *m_temp1, *m_softmaxOfRight, *m_logSoftmaxOfRight);
-        Matrix<ElemType>::DistributedCrossEntropy(*m_logSoftmaxOfRight, *DistributedGatheredLabels<ElemType>::m_gatheredLabels, Value(), m_probDim * m_rank, m_probDim * (m_rank + 1) - 1);
+            Matrix<ElemType>::DistributedSoftmax(Y, *m_temp1, *m_softmaxOfRight, *m_logSoftmaxOfRight);
+            Matrix<ElemType>::DistributedCrossEntropy(*m_logSoftmaxOfRight, *DistributedGatheredLabels<ElemType>::m_gatheredLabels, Value(), m_probDim * m_rank, m_probDim * (m_rank + 1) - 1);
+        }
     }
 
     virtual void /*ComputationNodeBase::*/ Validate(bool isFinalValidationPass) override
@@ -576,6 +583,9 @@ public:
 
     virtual void UpdateFunctionMBSize() override
     {
+        if (!Environment().IsTraining())
+            return;
+
         size_t minibatchSize = InputRef(0).Value().GetNumCols();
         if (m_minibatchSize != minibatchSize)
         {
@@ -615,20 +625,25 @@ public:
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override
     {
-        auto& W = InputRef(1).Value();
-        auto& X = InputRef(2).Value();
-        if (m_weightNormalize)
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
         {
-            W.VectorNorm2(*m_WNorm, true);
-            W.RowElementDivideBy(*m_WNorm);
+            auto& W = InputRef(1).Value();
+            auto& X = InputRef(2).Value();
+            if (m_weightNormalize)
+            {
+                W.VectorNorm2(*m_WNorm, true);
+                W.RowElementDivideBy(*m_WNorm);
+            }
+            if (DistributedGatheredLabels<ElemType>::isInitializeNode(this))
+                DistributedGatheredLabels<ElemType>::gatherDistributedLabels(InputRef(0).Value());
+            m_distGradAggPtr->DistributedAllGather(X, *m_temp1, m_inputDim * m_minibatchSize);
+            Matrix<ElemType>::Multiply(W, true, *m_temp1, false, Value());
+            if (Environment().IsTraining())
+                Matrix<ElemType>::DistributedLabelAdd(*DistributedGatheredLabels<ElemType>::m_gatheredLabels, (ElemType)m_bias, Value(), m_outputDim * m_rank, m_outputDim * (m_rank + 1) - 1);
+            Matrix<ElemType>::Scale((ElemType)m_scale, Value());
         }
-        if (DistributedGatheredLabels<ElemType>::isInitializeNode(this))
-            DistributedGatheredLabels<ElemType>::gatherDistributedLabels(InputRef(0).Value());
-        m_distGradAggPtr->DistributedAllGather(X, *m_temp1, m_inputDim * m_minibatchSize);
-        Matrix<ElemType>::Multiply(W, true, *m_temp1, false, Value());
-        if (Environment().IsTraining())
-            Matrix<ElemType>::DistributedLabelAdd(*DistributedGatheredLabels<ElemType>::m_gatheredLabels, (ElemType)m_bias, Value(), m_outputDim * m_rank, m_outputDim * (m_rank + 1) - 1);
-        Matrix<ElemType>::Scale((ElemType)m_scale, Value());
     }
 
     virtual bool OutputUsedInComputingInputNodesGradients() const override
@@ -1383,12 +1398,23 @@ public:
     }
 
     FeatureNormalizeNode(DEVICEID_TYPE deviceId, const wstring& name, size_t normalizeType = 2)
-        : Base(deviceId, name), m_normalizeType(normalizeType)
+        : Base(deviceId, name), m_normalizeType(normalizeType), m_rank(Globals::GetRank()), m_processNum(Globals::GetProcessNum())
     {
+        Globals::PrintStdoutPath();
+        m_initFlag = false;
+    }
+
+    ~FeatureNormalizeNode()
+    {
+        if (m_initFlag)
+            fclose(m_featureFile);
     }
 
     virtual void UpdateFunctionMBSize() override
     {
+        if (!Environment().IsTraining())
+            return;
+
         size_t minibatchSize = InputRef(0).Value().GetNumCols();
         m_magnitude->Resize(1, minibatchSize);
         m_temp1->Resize(1, minibatchSize);
@@ -1413,17 +1439,43 @@ public:
         FrameRange fr(InputRef(0).GetMBLayout());
         auto X = InputRef(0).ValueFor(fr);
 
-        if (1 == m_normalizeType)
-            X.VectorNorm1(*m_magnitude, true);
-        else if (2 == m_normalizeType)
-            X.VectorNorm2(*m_magnitude, true);
+        if (!Environment().IsTraining())
+        {
+            if (!m_initFlag)
+            {
+                m_featureFile = fopen((Globals::GetStdoutPath() + "/feature_" + to_string(m_rank) + "_" + to_string(m_processNum) + ".txt").c_str(), "w");
+                m_initFlag = true;
+            }
+            size_t rows = X.GetNumRows();
+            size_t cols = X.GetNumCols();
+            size_t nums = rows * cols;
+            if (m_featureData.size() != nums)
+                m_featureData.resize(nums);
+            ElemType* featurePtr = m_featureData.data();
+            X.CopyToArray(featurePtr, nums);
+            size_t index = 0;
+            for (size_t i(0); i < cols; ++i)
+            {
+                for (size_t j(0); j < rows; ++j)
+                    fprintf(m_featureFile, "%.8f ", (float)(featurePtr[index++]));
+                fprintf(m_featureFile, "\n");
+            }
+            Value().SetValue(0);
+        }
         else
-            LogicError("This normalizeType is not supported yet.");
+        {
+            if (1 == m_normalizeType)
+                X.VectorNorm1(*m_magnitude, true);
+            else if (2 == m_normalizeType)
+                X.VectorNorm2(*m_magnitude, true);
+            else
+                LogicError("This normalizeType is not supported yet.");
 
-        m_temp1->SetValue((ElemType) 1e-12);
-        Matrix<ElemType>::ScaleAndAdd((ElemType) 1, *m_temp1, *m_magnitude);
-        Value().SetValue(X);
-        Value().RowElementDivideBy(*m_magnitude);
+            m_temp1->SetValue((ElemType) 1e-12);
+            Matrix<ElemType>::ScaleAndAdd((ElemType)1, *m_temp1, *m_magnitude);
+            Value().SetValue(X);
+            Value().RowElementDivideBy(*m_magnitude);
+        }
     }
 
     virtual bool OutputUsedInComputingInputNodesGradients() const override
@@ -1480,6 +1532,12 @@ public:
         fstream >> m_normalizeType;
     }
 
+    size_t m_rank;
+    size_t m_processNum;
+    bool m_initFlag;
+    FILE* m_featureFile;
+    vector<ElemType> m_featureData;
+
     size_t m_normalizeType;                   // L1-normalization or L2-normalization
     shared_ptr<Matrix<ElemType>> m_magnitude; // Matrix(1, minibatchSize)
     shared_ptr<Matrix<ElemType>> m_temp1;     // Matrix(1, minibatchSize)
@@ -1518,6 +1576,9 @@ public:
 
     virtual void UpdateFunctionMBSize() override
     {
+        if (!Environment().IsTraining())
+            return;
+
         m_minibatchSize = InputRef(0).Value().GetNumCols();
 
         m_label->Resize(1, m_minibatchSize);
@@ -1545,30 +1606,35 @@ public:
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override
     {
-        FrameRange fr(InputRef(0).GetMBLayout());
-        InputRef(0).MaskedValueFor(fr).VectorMax(*m_label, *m_labelValue, true /*isColWise*/);
-        auto X = InputRef(1).ValueFor(fr);
-        auto& weight = InputRef(2).Value();
-
-        if (m_weightNormalize)
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
         {
-            weight.VectorNorm2(*m_weightMagnitude, false);
-            weight.ColumnElementDivideBy(*m_weightMagnitude);
-        }
+            FrameRange fr(InputRef(0).GetMBLayout());
+            InputRef(0).MaskedValueFor(fr).VectorMax(*m_label, *m_labelValue, true /*isColWise*/);
+            auto X = InputRef(1).ValueFor(fr);
+            auto& weight = InputRef(2).Value();
 
-        Matrix<ElemType>::Multiply(weight, false, X, false, Value());
-
-        if (Environment().IsTraining())
-        {
-            if (m_annealBias)
+            if (m_weightNormalize)
             {
-                m_bias = m_biasBase * pow(1 + m_biasGamma * m_iter, -m_biasPower);
-                m_bias = std::max(m_bias, m_biasMin);
-                m_bias = std::min(m_bias, m_biasMax);
-                ++m_iter;
+                weight.VectorNorm2(*m_weightMagnitude, false);
+                weight.ColumnElementDivideBy(*m_weightMagnitude);
             }
 
-            Matrix<ElemType>::LabelAdd(*m_label, (ElemType) m_bias, Value());
+            Matrix<ElemType>::Multiply(weight, false, X, false, Value());
+
+            if (Environment().IsTraining())
+            {
+                if (m_annealBias)
+                {
+                    m_bias = m_biasBase * pow(1 + m_biasGamma * m_iter, -m_biasPower);
+                    m_bias = std::max(m_bias, m_biasMin);
+                    m_bias = std::min(m_bias, m_biasMax);
+                    ++m_iter;
+                }
+
+                Matrix<ElemType>::LabelAdd(*m_label, (ElemType) m_bias, Value());
+            }
         }
     }
 
@@ -2179,34 +2245,42 @@ public:
 
     virtual void UpdateFunctionMBSize() override
     {
+        if (!Environment().IsTraining())
+            return;
+
         m_logSoftmaxOfRight->Resize(Input(1)->Value());
         m_softmaxOfRight->Resize(*m_logSoftmaxOfRight);
     }
 
     virtual void /*ComputationNodeNonLooping::*/ ForwardPropNonLooping() override // -sum(left_i * log(softmax_i(right)))
     {
-        FrameRange fr(InputRef(0).GetMBLayout());
-        // first compute the softmax (column-wise)
-        // Note that we need both log and non-log for gradient computation.
-        m_logSoftmaxOfRight->AssignLogSoftmaxOf(InputRef(1).ValueFor(fr), true);
-        // BUGBUG: No need to compute m_softmaxOfRight in ForwardProp, should be moved to BackpropTo().
-        m_softmaxOfRight->SetValue(*m_logSoftmaxOfRight);
-        m_softmaxOfRight->InplaceExp();
-        // flatten all gaps to zero, such that gaps will contribute zero to the sum
-        MaskMissingColumnsToZero(*m_logSoftmaxOfRight, InputRef(1).GetMBLayout(), fr);
+        if (!Environment().IsTraining())
+            Value().SetValue(0);
+        else
+        {
+            FrameRange fr(InputRef(0).GetMBLayout());
+            // first compute the softmax (column-wise)
+            // Note that we need both log and non-log for gradient computation.
+            m_logSoftmaxOfRight->AssignLogSoftmaxOf(InputRef(1).ValueFor(fr), true);
+            // BUGBUG: No need to compute m_softmaxOfRight in ForwardProp, should be moved to BackpropTo().
+            m_softmaxOfRight->SetValue(*m_logSoftmaxOfRight);
+            m_softmaxOfRight->InplaceExp();
+            // flatten all gaps to zero, such that gaps will contribute zero to the sum
+            MaskMissingColumnsToZero(*m_logSoftmaxOfRight, InputRef(1).GetMBLayout(), fr);
 
-        if (m_keepRate != (ElemType) 1.0)
-            Matrix<ElemType>::LabelSmoothing(InputRef(0).MaskedValueFor(fr), m_keepRate, m_smoothValue);
+            if (m_keepRate != (ElemType) 1.0)
+                Matrix<ElemType>::LabelSmoothing(InputRef(0).MaskedValueFor(fr), m_keepRate, m_smoothValue);
 
-        // reduce over all frames
-        Value().AssignInnerProductOfMatrices(InputRef(0).MaskedValueFor(fr), *m_logSoftmaxOfRight);
-        Value() *= -1;
+            // reduce over all frames
+            Value().AssignInnerProductOfMatrices(InputRef(0).MaskedValueFor(fr), *m_logSoftmaxOfRight);
+            Value() *= -1;
 #if NANCHECK
-        Value().HasNan("CrossEntropyWithSoftmax");
+            Value().HasNan("CrossEntropyWithSoftmax");
 #endif
 #if DUMPOUTPUT
-        Value().Print("CrossEntropyWithSoftmaxNode");
+            Value().Print("CrossEntropyWithSoftmaxNode");
 #endif
+        }
     }
 
     virtual void /*ComputationNodeBase::*/ Validate(bool isFinalValidationPass) override

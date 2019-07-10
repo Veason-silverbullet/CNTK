@@ -48,6 +48,10 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 
         static void SetBNMomentum(double BNMomentum) { m_BNMomentum = BNMomentum; }
         static double GetBNMomentum() { return m_BNMomentum; }
+
+        static void SetStdoutPath(std::string stdoutPath) { m_stdoutPath = stdoutPath; }
+        static std::string GetStdoutPath() { return m_stdoutPath; }
+        static void PrintStdoutPath() { LOGPRINTF(stderr, "m_stdoutPath = %s\n", m_stdoutPath.c_str()); }
     private:
         static std::atomic<bool> m_forceDeterministicAlgorithms;
         // The global flag to enable matrices values in forward and backward prop
@@ -65,5 +69,6 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         static std::atomic<bool> m_useBNMomentum;
         static std::atomic<double> m_BNMomentum;
 
+        static std::string m_stdoutPath;
     };
 }}}
